@@ -1,8 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { HelpCircle } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Alliance = "red" | "blue";
 type Slot = "1" | "2";
@@ -114,12 +124,15 @@ export function DecodeSimulator() {
               Model alliance roles, artifact targets, gate timing, and obelisk endgame to project your match score.
             </p>
           </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-xs uppercase tracking-widest text-muted-foreground">Projected</span>
-            <div className="flex items-baseline gap-4">
-              <ScoreBadge alliance="red" value={breakdown.red.total} />
-              <span className="text-muted-foreground">vs</span>
-              <ScoreBadge alliance="blue" value={breakdown.blue.total} />
+          <div className="flex items-start gap-3">
+            <AboutRulesDialog />
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground">Projected</span>
+              <div className="flex items-baseline gap-4">
+                <ScoreBadge alliance="red" value={breakdown.red.total} />
+                <span className="text-muted-foreground">vs</span>
+                <ScoreBadge alliance="blue" value={breakdown.blue.total} />
+              </div>
             </div>
           </div>
         </div>
@@ -272,6 +285,135 @@ export function DecodeSimulator() {
         Unofficial planning tool · DECODE scoring model is configurable in code
       </footer>
     </main>
+  );
+}
+
+function AboutRulesDialog() {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 border-border bg-secondary/40 hover:bg-secondary/60"
+          aria-label="About and rules"
+        >
+          <HelpCircle className="size-4" />
+          <span className="hidden sm:inline">About</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85vh] max-w-2xl gap-0 overflow-hidden border-border bg-secondary/30 p-0 sm:rounded-xl">
+        <DialogHeader className="border-b border-border px-6 py-4 pr-12">
+          <DialogTitle>About &amp; Rules</DialogTitle>
+        </DialogHeader>
+        <Tabs defaultValue="rules" className="flex min-h-0 flex-1 flex-col">
+          <TabsList className="mx-6 mt-4 w-auto justify-start bg-background/60">
+            <TabsTrigger value="rules">Game Rules</TabsTrigger>
+            <TabsTrigger value="guide">How to Use This Simulator</TabsTrigger>
+          </TabsList>
+          <ScrollArea className="h-[min(60vh,32rem)]">
+            <TabsContent value="rules" className="mt-0 space-y-4 px-6 pb-6 pt-4">
+              <p className="text-sm font-semibold text-foreground">
+                FTC 2025–26 DECODE — Quick Rules Reference
+              </p>
+              <RulesSection title="Match Structure">
+                <li>Each match has 2 alliances (Red &amp; Blue), each with 2 robots</li>
+                <li>
+                  30-second Autonomous period (no driver input), then 2-minute Teleoperated
+                  (TELEOP) period
+                </li>
+                <li>Artifacts are colored balls: Purple (P) and Green (G)</li>
+              </RulesSection>
+              <RulesSection title="Scoring Artifacts">
+                <li>Robots collect artifacts and shoot them into their GOAL</li>
+                <li>Artifacts that land correctly on the RAMP = CLASSIFIED (score points)</li>
+                <li>Artifacts that miss the ramp = OVERFLOW (fewer points)</li>
+                <li>During AUTO: classified artifacts score more than in TELEOP</li>
+              </RulesSection>
+              <RulesSection title="The Gate">
+                <li>Each alliance has a GATE on their ramp</li>
+                <li>
+                  When a robot opens the gate during TELEOP, additional classified artifacts can
+                  score
+                </li>
+                <li>Opening the gate earlier in TELEOP = larger timing bonus</li>
+                <li>Opening before ~30 seconds into TELEOP maximizes the bonus</li>
+              </RulesSection>
+              <RulesSection title="The Obelisk &amp; Patterns">
+                <li>
+                  The OBELISK is a central field element showing the target MOTIF for the match
+                </li>
+                <li>
+                  A MOTIF is a color sequence of 3 artifacts: always 2 Purple + 1 Green, in one of
+                  3 orders: GPP, PGP, or PPG
+                </li>
+                <li>
+                  The motif is randomized each match — robots must read it and score in that order
+                </li>
+                <li>
+                  Completing the pattern scores bonus points (10 pts per pattern, 20 pts for
+                  all-green perfect)
+                </li>
+                <li>Both robots in an alliance can contribute to patterns</li>
+              </RulesSection>
+              <RulesSection title="Endgame (BASE return)">
+                <li>At the end of TELEOP, robots should return to their BASE</li>
+                <li>Low ascent: +5 points</li>
+                <li>High ascent: +15 points</li>
+              </RulesSection>
+              <RulesSection title="Interference">
+                <li>
+                  Robots that interfere with opponents receive penalty deductions (−6 pts shown in
+                  simulator)
+                </li>
+                <li>
+                  Robots should avoid colliding with alliance partners when both chase the same
+                  artifacts (interference threshold ~14 artifacts per robot)
+                </li>
+              </RulesSection>
+            </TabsContent>
+            <TabsContent value="guide" className="mt-0 px-6 pb-6 pt-4">
+              <div className="rounded-lg border border-border bg-background/40 p-4">
+                <ol className="list-decimal space-y-3 pl-4 text-sm text-muted-foreground marker:text-primary marker:font-semibold">
+                  <li>
+                    Select which robot to configure using the RED/BLUE and Slot 1/2 buttons on the
+                    left panel
+                  </li>
+                  <li>
+                    Use the sliders to set your expected performance: how many artifacts
+                    you&apos;ll score in auto and teleop, when you plan to open the gate, and how
+                    many obelisk patterns you&apos;ll complete
+                  </li>
+                  <li>Select your endgame ascent level (none / low / high)</li>
+                  <li>
+                    Click an Obelisk Pattern to set which motif your alliance is targeting this
+                    match
+                  </li>
+                  <li>
+                    The right panel updates live — showing projected scores for each robot and
+                    alliance total
+                  </li>
+                  <li>Switch between all 4 robots to model your full alliance strategy</li>
+                  <li>
+                    Use the Coordination Notes at the bottom as a pre-match checklist with your
+                    alliance partner
+                  </li>
+                </ol>
+              </div>
+            </TabsContent>
+          </ScrollArea>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RulesSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-lg border border-border bg-background/40 p-4">
+      <h3 className="mb-2 text-sm font-semibold text-foreground">{title}</h3>
+      <ul className="list-disc space-y-1.5 pl-4 text-sm text-muted-foreground">{children}</ul>
+    </section>
   );
 }
 
