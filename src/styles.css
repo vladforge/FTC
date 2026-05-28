@@ -46,6 +46,9 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
+  --color-red-alliance: var(--red-alliance);
+  --color-blue-alliance: var(--blue-alliance);
+  --color-field-grid: var(--field-grid);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
