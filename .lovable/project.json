@@ -1,4 +1,4 @@
 {
-  "schemaVersion": 1,
-  "template": "tanstack_start_ts_2026-05-25"
+  "name": "FTC DECODE Simulator",
+  "template": "vite_react_spa"
 }
