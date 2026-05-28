@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -62,30 +61,42 @@ export function DecodeSimulator() {
   const [activeSlot, setActiveSlot] = useState<Slot>("1");
   const [pattern, setPattern] = useState<PatternId>("GPP");
 
-  const [red1, setRed1] = useState<RobotPlan>(defaultRobot(0));
-  const [red2, setRed2] = useState<RobotPlan>(defaultRobot(-1));
-  const [blue1, setBlue1] = useState<RobotPlan>(defaultRobot(0));
-  const [blue2, setBlue2] = useState<RobotPlan>(defaultRobot(-1));
+  const [robots, setRobots] = useState({
+    redSlot1: defaultRobot(0),
+    redSlot2: defaultRobot(-1),
+    blueSlot1: defaultRobot(0),
+    blueSlot2: defaultRobot(-1),
+  });
 
-  const setters = { red1: setRed1, red2: setRed2, blue1: setBlue1, blue2: setBlue2 };
-  const robots = { red1, red2, blue1, blue2 };
-  const currentKey = `${activeAlliance}${activeSlot}` as keyof typeof robots;
+  const currentKey =
+    `${activeAlliance}Slot${activeSlot}` as keyof typeof robots;
   const current = robots[currentKey];
   const setCurrent = (patch: Partial<RobotPlan>) =>
-    setters[currentKey]((prev) => ({ ...prev, ...patch }));
+    setRobots((prev) => ({
+      ...prev,
+      [currentKey]: { ...prev[currentKey], ...patch },
+    }));
+
+  console.log("MatchStrategySimulator state", {
+    activeAlliance,
+    activeSlot,
+    pattern,
+    robots,
+    currentKey,
+  });
 
   const breakdown = useMemo(() => {
-    const r1 = scoreRobot(red1, pattern);
-    const r2 = scoreRobot(red2, pattern);
-    const b1 = scoreRobot(blue1, pattern);
-    const b2 = scoreRobot(blue2, pattern);
-    const redPenalty = interferencePenalty(red1, red2);
-    const bluePenalty = interferencePenalty(blue1, blue2);
+    const r1 = scoreRobot(robots.redSlot1, pattern);
+    const r2 = scoreRobot(robots.redSlot2, pattern);
+    const b1 = scoreRobot(robots.blueSlot1, pattern);
+    const b2 = scoreRobot(robots.blueSlot2, pattern);
+    const redPenalty = interferencePenalty(robots.redSlot1, robots.redSlot2);
+    const bluePenalty = interferencePenalty(robots.blueSlot1, robots.blueSlot2);
     return {
       red: { r1, r2, penalty: redPenalty, total: r1.total + r2.total - redPenalty },
       blue: { r1: b1, r2: b2, penalty: bluePenalty, total: b1.total + b2.total - bluePenalty },
     };
-  }, [red1, red2, blue1, blue2, pattern]);
+  }, [robots, pattern]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -232,8 +243,18 @@ export function DecodeSimulator() {
 
         {/* Right: results */}
         <section className="space-y-6">
-          <AllianceCard alliance="red" data={breakdown.red} />
-          <AllianceCard alliance="blue" data={breakdown.blue} />
+          <AllianceCard
+            alliance="red"
+            data={breakdown.red}
+            activeAlliance={activeAlliance}
+            activeSlot={activeSlot}
+          />
+          <AllianceCard
+            alliance="blue"
+            data={breakdown.blue}
+            activeAlliance={activeAlliance}
+            activeSlot={activeSlot}
+          />
 
           <div className="rounded-xl border border-border bg-secondary/30 p-5">
             <h3 className="font-semibold mb-2">Coordination Notes</h3>
@@ -328,6 +349,8 @@ function PatternGlyph({ id }: { id: PatternId }) {
 function AllianceCard({
   alliance,
   data,
+  activeAlliance,
+  activeSlot,
 }: {
   alliance: Alliance;
   data: {
@@ -336,22 +359,29 @@ function AllianceCard({
     penalty: number;
     total: number;
   };
+  activeAlliance: Alliance;
+  activeSlot: Slot;
 }) {
   const accent =
     alliance === "red" ? "border-red-alliance/60 bg-red-alliance/5" : "border-blue-alliance/60 bg-blue-alliance/5";
   const labelColor = alliance === "red" ? "text-red-alliance" : "text-blue-alliance";
+  const activeSlotInThisAlliance = activeAlliance === alliance ? activeSlot : null;
+  const slotBreakdowns = {
+    slot1: data.r1,
+    slot2: data.r2,
+  };
   const rows = [
-    ["Slot 1 auto", data.r1.auto],
-    ["Slot 1 teleop", data.r1.teleop],
-    ["Slot 1 gate", data.r1.gate],
-    ["Slot 1 ascent", data.r1.ascent],
-    ["Slot 1 pattern", data.r1.patternBonus],
-    ["Slot 2 auto", data.r2.auto],
-    ["Slot 2 teleop", data.r2.teleop],
-    ["Slot 2 gate", data.r2.gate],
-    ["Slot 2 ascent", data.r2.ascent],
-    ["Slot 2 pattern", data.r2.patternBonus],
-  ] as const;
+    { key: "slot1-auto", slot: "1" as const, label: "Slot 1 auto", value: slotBreakdowns.slot1.auto },
+    { key: "slot1-teleop", slot: "1" as const, label: "Slot 1 teleop", value: slotBreakdowns.slot1.teleop },
+    { key: "slot1-gate", slot: "1" as const, label: "Slot 1 gate", value: slotBreakdowns.slot1.gate },
+    { key: "slot1-ascent", slot: "1" as const, label: "Slot 1 ascent", value: slotBreakdowns.slot1.ascent },
+    { key: "slot1-pattern", slot: "1" as const, label: "Slot 1 pattern", value: slotBreakdowns.slot1.patternBonus },
+    { key: "slot2-auto", slot: "2" as const, label: "Slot 2 auto", value: slotBreakdowns.slot2.auto },
+    { key: "slot2-teleop", slot: "2" as const, label: "Slot 2 teleop", value: slotBreakdowns.slot2.teleop },
+    { key: "slot2-gate", slot: "2" as const, label: "Slot 2 gate", value: slotBreakdowns.slot2.gate },
+    { key: "slot2-ascent", slot: "2" as const, label: "Slot 2 ascent", value: slotBreakdowns.slot2.ascent },
+    { key: "slot2-pattern", slot: "2" as const, label: "Slot 2 pattern", value: slotBreakdowns.slot2.patternBonus },
+  ];
   return (
     <div className={`rounded-xl border p-5 ${accent}`}>
       <div className="flex items-center justify-between mb-4">
@@ -361,17 +391,60 @@ function AllianceCard({
         <span className="text-2xl font-bold tabular-nums">{data.total}</span>
       </div>
       <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-        {rows.map(([k, v]) => (
-          <div key={k} className="flex justify-between border-b border-border/40 py-1">
-            <span className="text-muted-foreground">{k}</span>
-            <span className="tabular-nums">{v}</span>
-          </div>
+        {rows.map((row) => (
+          <ScoreLineItem
+            key={row.key}
+            label={row.label}
+            value={row.value}
+            highlight={row.slot === activeSlotInThisAlliance}
+            allianceTone={alliance}
+          />
         ))}
-        <div className="col-span-2 flex justify-between pt-2 text-destructive">
-          <span>Interference penalty</span>
-          <span className="tabular-nums">−{data.penalty}</span>
-        </div>
+        <ScoreLineItem label="Interference penalty" value={-data.penalty} emphasizeDestructive />
       </div>
+    </div>
+  );
+}
+
+function ScoreLineItem({
+  label,
+  value,
+  emphasizeDestructive = false,
+  highlight = false,
+  allianceTone = "red",
+}: {
+  label: string;
+  value: number;
+  emphasizeDestructive?: boolean;
+  highlight?: boolean;
+  allianceTone?: Alliance;
+}) {
+  const [flash, setFlash] = useState(false);
+  const prevValue = useRef(value);
+
+  useEffect(() => {
+    if (prevValue.current === value) return;
+
+    setFlash(true);
+    prevValue.current = value;
+    const timeout = setTimeout(() => setFlash(false), 450);
+    return () => clearTimeout(timeout);
+  }, [value]);
+
+  const slotHighlightClass = highlight
+    ? allianceTone === "red"
+      ? "bg-red-alliance/10 border border-red-alliance/40 shadow-[0_0_0_1px_rgba(239,68,68,0.2)]"
+      : "bg-blue-alliance/10 border border-blue-alliance/40 shadow-[0_0_0_1px_rgba(59,130,246,0.22)]"
+    : "border border-transparent";
+
+  return (
+    <div
+      className={`col-span-2 flex justify-between border-b border-border/40 py-1 px-1 rounded-sm transition-colors duration-500 ${
+        flash ? "bg-primary/15" : "bg-transparent"
+      } ${slotHighlightClass} ${emphasizeDestructive ? "text-destructive pt-2 border-b-0" : ""}`}
+    >
+      <span className={emphasizeDestructive ? "" : "text-muted-foreground"}>{label}</span>
+      <span className="tabular-nums">{value}</span>
     </div>
   );
 }
